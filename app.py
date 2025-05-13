@@ -66,7 +66,7 @@ class Product(db.Model):
     stock = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.TIMESTAMP, default=datetime.utcnow)
     vendor = db.relationship('Vendor', back_populates='products')
-    categories = db.relationship('Category', secondary='product_categories', back_populates='categories')
+    categories = db.relationship('Category', secondary='product_categories', back_populates='products')  # Corrected back_populates
 
     def __init__(self, vendor_id, name, description, price, stock):
         self.vendor_id = vendor_id
@@ -75,6 +75,31 @@ class Product(db.Model):
         self.price = price
         self.stock = stock
 
+class Order(db.Model):
+    __tablename__ = 'orders'
+    order_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    order_status = db.Column(db.String(20), nullable=False)
+    order_date = db.Column(db.TIMESTAMP, default=datetime.utcnow)
+    total_amount = db.Column(db.Numeric(10, 2), nullable=False)
+    user = db.relationship('User')
+    items = db.relationship('OrderItem', back_populates='order')
+
+class OrderItem(db.Model):
+    __tablename__ = 'order_items'
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.order_id'), primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.product_id'), primary_key=True)
+    quantity = db.Column(db.Integer, nullable=False)
+    price = db.Column(db.Numeric(10, 2), nullable=False)
+    order = db.relationship('Order', back_populates='items')
+    product = db.relationship('Product')
+
+class ProductKeyword(db.Model):
+    __tablename__ = 'product_keywords'
+    product_id = db.Column(db.Integer, db.ForeignKey('products.product_id'), primary_key=True)
+    keyword = db.Column(db.String(50), primary_key=True)
+    product = db.relationship('Product', backref='keywords')
+
 
 # Define the Category model
 class Category(db.Model):
@@ -82,7 +107,7 @@ class Category(db.Model):
     category_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
-    products = db.relationship('Product', secondary='product_categories', back_populates='categories')
+    products = db.relationship('Product', secondary='product_categories', back_populates='categories') # Corrected back_populates
 
     def __init__(self, name, description):
         self.name = name
