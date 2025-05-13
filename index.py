@@ -11,6 +11,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:aQigGXxWbTiiIBdbT
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+
 # Define the User model (if using SQLAlchemy)
 class User(db.Model):
     __tablename__ = 'users'
@@ -30,6 +31,7 @@ class User(db.Model):
         self.role = role
         self.display_name = display_name
 
+
 # Define the Vendor model (if using SQLAlchemy)
 class Vendor(db.Model):
     __tablename__ = 'vendors'
@@ -48,6 +50,7 @@ class Vendor(db.Model):
         self.shop_name = shop_name
         self.shop_description = shop_description
         self.app_status = app_status
+
 
 # Define the Product model
 class Product(db.Model):
@@ -69,6 +72,7 @@ class Product(db.Model):
         self.price = price
         self.stock = stock
 
+
 # Define the Category model
 class Category(db.Model):
     __tablename__ = 'categories'
@@ -81,6 +85,7 @@ class Category(db.Model):
         self.name = name
         self.description = description
 
+
 # Define the Product_Categories association table
 product_categories = db.Table(
     'product_categories',
@@ -88,9 +93,11 @@ product_categories = db.Table(
     db.Column('category_id', db.Integer, db.ForeignKey('categories.category_id'), primary_key=True)
 )
 
+
 @app.before_first_request #Only use this with SQLAlchemy
 def create_tables():
     db.create_all()
+
 
 #  Flask route to handle user login
 @app.route('/api/login', methods=['POST'])
@@ -103,7 +110,6 @@ def login():
     if not username or not password:
         return jsonify({'success': False, 'message': 'Username and password are required.'}), 400
 
-    # Option 1: Using SQLAlchemy
     user = User.query.filter_by(username=username).first()
     if user and check_password_hash(user.password, password):
         return jsonify({
@@ -114,6 +120,7 @@ def login():
         }), 200
     else:
         return jsonify({'success': False, 'message': 'Invalid credentials.'}), 401
+
 
 # Flask route to handle user registration
 @app.route('/api/register', methods=['POST'])
@@ -131,7 +138,6 @@ def register():
     if role not in ('customer', 'vendor', 'admin'):
         return jsonify({'success': False, 'message': 'Invalid role.'}), 400
 
-    # Option 1: Using SQLAlchemy
     # Check if username or email already exists
     if User.query.filter_by(username=username).first():
         return jsonify({'success': False, 'message': 'Username already exists.'}), 400
@@ -144,58 +150,8 @@ def register():
     db.session.commit()
     return jsonify({'success': True, 'message': 'Registration successful!', 'username': username, 'role': role}), 201
 
-    # Option 2: Using psycopg2
-    # conn = get_db_connection()
-    # if conn:
-    #     cursor = conn.cursor()
-    #      # Check if username or email already exists
-    #     cursor.execute("SELECT username FROM users WHERE username = %s", (username,))
-    #     if cursor.fetchone():
-    #         conn.close()
-    #         return jsonify({'success': False, 'message': 'Username already exists.'}), 400
-    #     cursor.execute("SELECT email FROM users WHERE email = %s", (email,))
-    #     if cursor.fetchone():
-    #         conn.close()
-    #         return jsonify({'success': False, 'message': 'Email already exists.'}), 400
-
-    #     hashed_password = generate_password_hash(password, method='sha256')
-    #     cursor.execute(
-    #         "INSERT INTO users (username, password, email, role, display_name) VALUES (%s, %s, %s, %s, %s)",
-    #         (username, hashed_password, email, role, display_name),
-    #     )
-    #     conn.commit()
-    #     conn.close()
-    #     return jsonify({'success': True, 'message': 'Registration successful!', 'username': username, 'role': role}), 201
-    # else:
-    #     return jsonify({'success': False, 'message': 'Database connection error.'}), 500
 def fetch_products_by_vendor(vendor_id):
     """Fetches products for a given vendor_id from the database."""
-    # conn = get_db_connection()
-    # if conn is None:
-    #     return []  # Or raise an exception, depending on your error handling policy.
-
-    # cursor = conn.cursor()
-    # cursor.execute(
-    #     """
-    #         SELECT
-    #             p.product_id,
-    #             p.name,
-    #             p.description,
-    #             p.price,
-    #             p.stock,
-    #             v.shop_name,
-    #             v.vendor_id
-    #         FROM
-    #             Products p
-    #         JOIN
-    #             Vendors v ON p.vendor_id = v.vendor_id
-    #         WHERE
-    #             p.vendor_id = %s;
-    #         """,
-    #     (vendor_id,),
-    # )
-    # products = cursor.fetchall()
-    # conn.close()
     products = Product.query.join(Vendor).filter(Product.vendor_id == vendor_id).all()
 
     # Convert the results to a list of dictionaries for easier use in the template
@@ -213,7 +169,8 @@ def fetch_products_by_vendor(vendor_id):
             }
         )
     return product_list
-# Flask route to get products by Vendor ID
+
+
 @app.route('/api/products/vendor/<int:vendor_id>', methods=['GET'])
 def get_vendor_products(vendor_id):
     products = fetch_products_by_vendor(vendor_id)  # Fetch products from the database
@@ -221,6 +178,7 @@ def get_vendor_products(vendor_id):
         return jsonify({'success': True, 'products': products}), 200
     else:
         return jsonify({'success': False, 'message': 'No products found for this vendor.'}), 404
+
 
 if __name__ == '__main__':
     #  Use this only with SQLAlchemy
