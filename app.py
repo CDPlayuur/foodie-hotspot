@@ -16,7 +16,7 @@ db = SQLAlchemy(app)
 CORS(app, supports_credentials=True)
 
 
-# Define the User model (if using SQLAlchemy)
+# Define the User model
 class User(db.Model):
     __tablename__ = 'users'
     user_id = db.Column(db.Integer, primary_key=True)
