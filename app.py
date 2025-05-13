@@ -7,14 +7,12 @@ from flask_cors import CORS
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL',
-                                                     'postgresql://postgres:aQigGXxWbTiiIBdbTYIFmPBXkJgypWBL@postgres.railway.internal:5432/railway')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres:aQigGXxWbTiiIBdbTYIFmPBXkJgypWBL@postgres.railway.internal:5432/railway')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # Enable CORS for all routes and all origins
 CORS(app, supports_credentials=True)
-
 
 # Define the User model
 class User(db.Model):
@@ -67,8 +65,7 @@ class Product(db.Model):
     stock = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.TIMESTAMP, default=datetime.utcnow)
     vendor = db.relationship('Vendor', back_populates='products')
-    categories = db.relationship('Category', secondary='product_categories',
-                                 back_populates='products')
+    categories = db.relationship('Category', secondary='product_categories', back_populates='products')
 
     def __init__(self, vendor_id, name, description, price, stock):
         self.vendor_id = vendor_id
@@ -112,8 +109,7 @@ class Category(db.Model):
     category_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
-    products = db.relationship('Product', secondary='product_categories',
-                                 back_populates='categories')
+    products = db.relationship('Product', secondary='product_categories', back_populates='categories')
 
     def __init__(self, name, description):
         self.name = name
