@@ -1,13 +1,11 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-import psycopg2 #not needed
+import os
 from datetime import datetime
 
 app = Flask(__name__)
-
-# Option 1: Using DATABASE_URL (for Railway)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:aQigGXxWbTiiIBdbTYIFmPBXkJgypWBL@postgres.railway.internal:5432/railway' #Replace with your actual values
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -94,10 +92,6 @@ product_categories = db.Table(
 )
 
 
-@app.before_first_request #Only use this with SQLAlchemy
-def create_tables():
-    db.create_all()
-
 
 #  Flask route to handle user login
 @app.route('/api/login', methods=['POST'])
@@ -106,6 +100,7 @@ def login():
     username = data.get('username')
     password = data.get('password')
 
+    # Input validation
     if not username or not password:
         return jsonify({'success': False, 'message': 'Username and password are required.'}), 400
 
@@ -115,7 +110,7 @@ def login():
             'success': True,
             'message': 'Login successful!',
             'username': user.username,
-            'role': user.role  # Include the user's role in the response
+            'role': user.role
         }), 200
     else:
         return jsonify({'success': False, 'message': 'Invalid credentials.'}), 401
@@ -179,8 +174,8 @@ def get_vendor_products(vendor_id):
         return jsonify({'success': False, 'message': 'No products found for this vendor.'}), 404
 
 
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
-
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
