@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JRU Foodie Hotspot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+
+<body class="bg-gray-50" x-data="foodieApp()">
+    <div x-show="screen === 'roleSelect'" class="p-4 flex justify-center items-center h-screen">
+        <div class="bg-white p-6 rounded shadow-md">
+            <h1 class="text-2xl font-bold mb-4 text-center">Select User Role</h1>
+            <div class="flex justify-center space-x-4">
+                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                    @click="setUserRole('customer')">Customer</button>
+                <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                    @click="setUserRole('vendor')">Vendor</button>
+                <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                    @click="setUserRole('admin')">Admin</button>
+            </div>
+        </div>
+    </div>
+
+    <template x-if="userRole === 'admin'">
+        <div x-show="screen === 'admin_review'" class="p-4">
+            <h2 class="text-xl font-bold mb-4">Vendor Applications</h2>
+            <template x-for="application in vendorApplications" :key="application.id">
+                <div class="bg-white p-4 my-2 rounded shadow">
+                    <span x-text="application.vendorName"></span>
+                    <button class="bg-green-500 hover:bg-green-700 text-white py-1 px-2 rounded ml-2"
+                        @click="approveVendor(application.id)">Approve</button>
+                    <button class="bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded ml-2"
+                        @click="rejectVendor(application.id)">Reject</button>
+                </div>
+            </template>
+        </div>
+    </template>
+
+    <template x-if="userRole === 'vendor'">
+        <div x-show="screen === 'vendor_apply'" class="p-4">
+            <h2 class="text-xl font-bold mb-4">Apply for Shop Listing</h2>
+            <div x-show="!shopApproved">
+                <input type="text" x-model="newShopName" placeholder="Shop Name"
+                    class="border p-2 rounded mb-2 w-full">
+                <textarea x-model="newShopDescription" placeholder="Shop Description"
+                    class="border p-2 rounded mb-2 w-full"></textarea>
+                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                    @click="applyForShop">Submit Application</button>
+                <p x-show="applicationStatus" x-text="applicationStatus"></p>
+            </div>
+            <div x-show="shopApproved">
+                <h3 class="text-lg font-semibold mb-2">Add Products and Keywords</h3>
+                </div>
+        </div>
+    </template>
+
+    <template x-if="userRole === 'customer'">
+        <div x-show="screen === 'browse'" class="p-4">
+            <h1 class="text-2xl font-bold mb-4">Browse Shops</h1>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <template x-for="store in stores" :key="store.id">
+                    <div class="bg-white p-2 rounded shadow cursor-pointer" @click="openStore(store.id)">
+                        <div class="bg-gray-200 h-24 flex items-center justify-center">Image</div>
+                        <div class="text-center mt-2" x-text="store.name"></div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="mt-4">
+                <h3 class="font-semibold mb-2">Apply Filters</h3>
+                <input type="text" placeholder="Search Shops..." x-model="searchQuery"
+                    class="border p-2 rounded w-full mb-2">
+                </div>
+        </div>
+
+        <div x-show="screen === 'store'" class="p-4">
+            <button class="mb-2 text-sm text-blue-600" @click="screen = 'browse'">&larr; Back</button>
+            <h2 class="text-xl font-bold mb-2" x-text="currentStore.name"></h2>
+
+            <div class="mb-4">
+                <h3 class="font-semibold">Featured</h3>
+                <div class="flex overflow-x-auto space-x-2 py-2">
+                    <template x-for="item in currentStore.featured" :key="item.id">
+                        <div class="bg-white p-2 rounded shadow w-40 cursor-pointer" @click="openItem(item)">
+                            <div class="bg-gray-200 h-20 flex items-center justify-center">Img</div>
+                            <div class="text-sm mt-1" x-text="item.name"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="font-semibold">List</h3>
+                <ul>
+                    <template x-for="item in currentStore.list" :key="item.id">
+                        <li class="flex justify-between bg-white p-2 my-1 rounded shadow">
+                            <span x-text="item.name"></span>
+                            <button class="text-sm text-blue-600" @click="openItem(item)">Add</button>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </div>
+
+        <div x-show="showItem" class="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center">
+            <div class="bg-white p-4 rounded shadow w-72">
+                <h3 class="text-lg font-bold" x-text="selectedItem.name"></h3>
+                <p class="text-gray-500 mb-4" x-text="`$${selectedItem.price.toFixed(2)}`"></p>
+                <button class="bg-purple-600 text-white px-4 py-2 rounded"
+                    @click="addToOrder(selectedItem)">Add to Order</button>
+                <button class="block mt-2 text-sm text-red-500" @click="showItem = false">Cancel</button>
+            </div>
+        </div>
+
+        <div x-show="screen === 'summary'" class="p-4">
+            <button class="mb-2 text-sm text-blue-600" @click="screen = 'store'">&larr; Back</button>
+            <h2 class="text-xl font-bold mb-4">Order Summary</h2>
+            <ul>
+                <template x-for="item in order" :key="item.id">
+                    <li class="flex justify-between bg-white p-2 my-1 rounded shadow">
+                        <span x-text="item.name"></span>
+                        <span>$<span x-text="item.price.toFixed(2)"></span></span>
+                    </li>
+                </template>
+            </ul>
+            <button class="bg-purple-600 text-white px-4 py-2 mt-4 rounded" @click="placeOrder">Place Order</button>
+        </div>
+
+        <div x-show="screen === 'status'" class="p-4">
+            <h2 class="text-xl font-bold mb-4">Order Status</h2>
+            <div class="flex space-x-4 mb-4">
+                <template x-for="step in ['Placed', 'Confirmed', 'Shipped', 'Delivered']">
+                    <div>
+                        <div class="text-center text-sm font-medium"
+                            :class="{'text-purple-600': orderStatus === step}">
+                            <span x-text="step"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <h3 class="font-semibold mb-2">Order Info</h3>
+                <p>Customer: John Doe</p>
+                <p>Address: JRU Building 1st Floor</p>
+                <p>Delivery Time: 2:00 PM</p>
+            </div>
+        </div>
+
+        <div x-show="screen === 'fulfillment'" class="p-4">
+            <h2 class="text-xl font-bold mb-4">Order Fulfillment</h2>
+            <p>Order is ready for <span x-text="fulfillmentMethod"></span>.</p>
+            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                @click="completeOrder">Order Complete</button>
+        </div>
+    </template>
+
+
+    <script>
+        function foodieApp() {
+            return {
+                userRole: null, // 'customer', 'vendor', 'admin'
+                screen: 'roleSelect', // 'roleSelect', 'browse', 'store', 'summary', 'status', 'fulfillment', 'vendor_apply', 'admin_review'
+                showItem: false,
+                selectedItem: {},
+                order: [],
+                orderStatus: 'Placed',
+                fulfillmentMethod: 'Delivery', // or 'Pickup'
+                stores: [{
+                    id: 1,
+                    name: 'Store 1'
+                }, {
+                    id: 2,
+                    name: 'Store 2'
+                }, {
+                    id: 3,
+                    name: 'Store 3'
+                }, ],
+                currentStore: {
+                    id: 2,
+                    name: 'Store 2',
+                    featured: [{
+                        id: 101,
+                        name: 'Food 1',
+                        price: 50
+                    }, {
+                        id: 102,
+                        name: 'Food 2',
+                        price: 40
+                    }],
+                    list: [{
+                        id: 201,
+                        name: 'Latte Item 1',
+                        price: 30
+                    }, {
+                        id: 202,
+                        name: 'Latte Item 2',
+                        price: 25
+                    }, {
+                        id: 203,
+                        name: 'Latte Item 3',
+                        price: 35
+                    }]
+                },
+                vendorApplications: [{
+                    id: 1,
+                    vendorName: 'Vendor A',
+                    description: 'Description A'
+                }, {
+                    id: 2,
+                    vendorName: 'Vendor B',
+                    description: 'Description B'
+                }],
+                shopApproved: false,
+                newShopName: '',
+                newShopDescription: '',
+                applicationStatus: '',
+                searchQuery: '', // For customer filtering
+
+                setUserRole(role) {
+                    this.userRole = role;
+                    this.screen = role === 'admin' ? 'admin_review' : role === 'vendor' ? 'vendor_apply' : 'browse';
+                },
+                openStore(id) {
+                    this.screen = 'store';
+                },
+                openItem(item) {
+                    this.selectedItem = item;
+                    this.showItem = true;
+                },
+                addToOrder(item) {
+                    this.order.push(item);
+                    this.showItem = false;
+                    this.screen = 'summary';
+                },
+                placeOrder() {
+                    //  Logic to send order to seller
+                    this.screen = 'status';
+                    // Simulate seller confirmation
+                    setTimeout(() => {
+                        this.orderStatus = 'Confirmed';
+                        this.screen = 'fulfillment';
+                    }, 2000);
+                },
+                completeOrder() {
+                    this.screen = 'browse';
+                    this.order = [];
+                    this.orderStatus = 'Placed';
+                    alert('Order Complete!');
+                },
+                applyForShop() {
+                    // Logic to submit application
+                    this.applicationStatus = 'Application Submitted. Awaiting Approval.';
+                    // Simulate admin approval
+                    setTimeout(() => {
+                        this.shopApproved = true;
+                        this.applicationStatus = 'Application Approved. Add your products.';
+                    }, 3000);
+                },
+                approveVendor(id) {
+                    // Logic to approve vendor
+                    this.vendorApplications = this.vendorApplications.filter(app => app.id !== id);
+                    alert('Vendor Approved');
+                },
+                rejectVendor(id) {
+                    // Logic to reject vendor
+                    this.vendorApplications = this.vendorApplications.filter(app => app.id !== id);
+                    alert('Vendor Rejected');
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
