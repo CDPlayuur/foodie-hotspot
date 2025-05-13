@@ -219,6 +219,30 @@ def get_vendor_products(vendor_id):
     else:
         return jsonify({'success': False, 'message': 'No products found for this vendor.'}), 404
 
+@app.route('/api/vendors', methods=['GET'])
+def get_vendors():
+    """
+    Retrieves all vendors from the database and returns them as a JSON response.
+    """
+    vendors = Vendor.query.all()
+    vendor_list = []
+    for vendor in vendors:
+        #  Calculate pickup and delivery.  For this example, assume approved vendors can do pickup.
+        pickup = vendor.approved_at is not None
+        delivery = True #  You might have a specific field for this in your database
+
+        vendor_list.append({
+            'vendor_id': vendor.vendor_id,
+            'shop_name': vendor.shop_name,
+            'shop_description': vendor.shop_description,
+            'app_status': vendor.app_status,
+            'shop_logo': vendor.shop_logo,
+            'pickup': pickup,
+            'delivery': delivery,
+        })
+    return jsonify({'success': True, 'vendors': vendor_list}), 200
+
+
 
 if __name__ == '__main__':
     with app.app_context():
