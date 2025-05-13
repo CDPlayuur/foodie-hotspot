@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from datetime import datetime
-from flask_cors import CORS
+from flask_cors import CORS  # Import CORS
 
 
 app = Flask(__name__)
@@ -11,7 +11,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgres
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-CORS(app) # Enable CORS for all routes
+# Enable CORS for all routes and all origins
+CORS(app, supports_credentials=True)
 
 
 # Define the User model (if using SQLAlchemy)
@@ -65,7 +66,7 @@ class Product(db.Model):
     stock = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.TIMESTAMP, default=datetime.utcnow)
     vendor = db.relationship('Vendor', back_populates='products')
-    categories = db.relationship('Category', secondary='product_categories', back_populates='products')
+    categories = db.relationship('Category', secondary='product_categories', back_populates='categories')
 
     def __init__(self, vendor_id, name, description, price, stock):
         self.vendor_id = vendor_id
@@ -100,6 +101,7 @@ product_categories = db.Table(
 #  Flask route to handle user login
 @app.route('/api/login', methods=['POST'])
 def login():
+    print("Inside /api/login route") #Added for debugging
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
@@ -118,6 +120,7 @@ def login():
         }), 200
     else:
         return jsonify({'success': False, 'message': 'Invalid credentials.'}), 401
+
 
 
 # Flask route to handle user registration
