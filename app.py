@@ -106,7 +106,6 @@ def login():
     username = data.get('username')
     password = data.get('password')
 
-    # Input validation
     if not username or not password:
         return jsonify({'success': False, 'message': 'Username and password are required.'}), 400
 
@@ -116,7 +115,7 @@ def login():
             'success': True,
             'message': 'Login successful!',
             'username': user.username,
-            'role': user.role
+            'role': user.role  # Include the user's role in the response
         }), 200
     else:
         return jsonify({'success': False, 'message': 'Invalid credentials.'}), 401
@@ -181,8 +180,7 @@ def get_vendor_products(vendor_id):
 
 
 if __name__ == '__main__':
-    #  Use this only with SQLAlchemy
     with app.app_context():
-        db.create_all()  # Create tables within the application context
+        db.create_all()
     app.run(debug=True)
 
