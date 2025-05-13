@@ -7,7 +7,8 @@ from flask_cors import CORS  # Import CORS
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres:aQigGXxWbTiiIBdbTYIFmPBXkJgypWBL@postgres.railway.internal:5432/railway')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL',
+                                                     'postgresql://postgres:aQigGXxWbTiiIBdbTYIFmPBXkJgypWBL@postgres.railway.internal:5432/railway')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -25,7 +26,7 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False)
     display_name = db.Column(db.String(100), nullable=False)
     created_at = db.Column(db.TIMESTAMP, default=datetime.utcnow)
-    vendor = db.relationship('Vendor', uselist=False, back_populates='user') # Added for relationship
+    vendor = db.relationship('Vendor', uselist=False, back_populates='user')
 
     def __init__(self, username, password, email, role, display_name):
         self.username = username
@@ -45,7 +46,7 @@ class Vendor(db.Model):
     app_status = db.Column(db.String(20), nullable=False)
     approved_at = db.Column(db.TIMESTAMP)
     shop_logo = db.Column(db.String(255))
-    user = db.relationship('User', back_populates='vendor') # Added relationship
+    user = db.relationship('User', back_populates='vendor')
     products = db.relationship('Product', back_populates='vendor')
 
     def __init__(self, user_id, shop_name, shop_description, app_status):
@@ -66,7 +67,8 @@ class Product(db.Model):
     stock = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.TIMESTAMP, default=datetime.utcnow)
     vendor = db.relationship('Vendor', back_populates='products')
-    categories = db.relationship('Category', secondary='product_categories', back_populates='products')  # Corrected back_populates
+    categories = db.relationship('Category', secondary='product_categories',
+                                 back_populates='products')
 
     def __init__(self, vendor_id, name, description, price, stock):
         self.vendor_id = vendor_id
@@ -74,6 +76,7 @@ class Product(db.Model):
         self.description = description
         self.price = price
         self.stock = stock
+
 
 class Order(db.Model):
     __tablename__ = 'orders'
@@ -85,6 +88,7 @@ class Order(db.Model):
     user = db.relationship('User')
     items = db.relationship('OrderItem', back_populates='order')
 
+
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
     order_id = db.Column(db.Integer, db.ForeignKey('orders.order_id'), primary_key=True)
@@ -93,6 +97,7 @@ class OrderItem(db.Model):
     price = db.Column(db.Numeric(10, 2), nullable=False)
     order = db.relationship('Order', back_populates='items')
     product = db.relationship('Product')
+
 
 class ProductKeyword(db.Model):
     __tablename__ = 'product_keywords'
@@ -107,7 +112,8 @@ class Category(db.Model):
     category_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
-    products = db.relationship('Product', secondary='product_categories', back_populates='categories') # Corrected back_populates
+    products = db.relationship('Product', secondary='product_categories',
+                                 back_populates='categories')
 
     def __init__(self, name, description):
         self.name = name
@@ -122,7 +128,6 @@ product_categories = db.Table(
 )
 
 
-
 #  Flask route to handle user login
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -135,13 +140,21 @@ def login():
         return jsonify({'success': False, 'message': 'Username and password are required.'}), 400
 
     user = User.query.filter_by(username=username).first()
-    if user and check_password_hash(user.password, password):
-        return jsonify({
-            'success': True,
-            'message': 'Login successful!',
-            'username': user.username,
-            'role': user.role
-        }), 200
+    if user:
+        # *********************************************************************************
+        # WARNING:  THIS IS INSECURE!  DO NOT USE THIS IN PRODUCTION!
+        #          This code bypasses password hashing and compares plain text passwords.
+        #          It is ONLY appropriate for a school project with no real-world use.
+        # *********************************************************************************
+        if user.password == password:
+            return jsonify({
+                'success': True,
+                'message': 'Login successful!',
+                'username': user.username,
+                'role': user.role
+            }), 200
+        else:
+            return jsonify({'success': False, 'message': 'Invalid credentials.'}), 401
     else:
         return jsonify({'success': False, 'message': 'Invalid credentials.'}), 401
 
@@ -169,11 +182,17 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify({'success': False, 'message': 'Email already exists.'}), 400
 
-    hashed_password = generate_password_hash(password, method='sha256')
-    new_user = User(username, hashed_password, email, role, display_name)
+    # *********************************************************************************
+    # WARNING:  THIS IS INSECURE!  DO NOT USE THIS IN PRODUCTION!
+    #          For a real application, you MUST hash the password here:
+    #          hashed_password = generate_password_hash(password, method='sha256')
+    #          new_user = User(username, hashed_password, email, role, display_name)
+    # *********************************************************************************
+    new_user = User(username, password, email, role, display_name)
     db.session.add(new_user)
     db.session.commit()
     return jsonify({'success': True, 'message': 'Registration successful!', 'username': username, 'role': role}), 201
+
 
 def fetch_products_by_vendor(vendor_id):
     """Fetches products for a given vendor_id from the database."""
@@ -205,8 +224,7 @@ def get_vendor_products(vendor_id):
         return jsonify({'success': False, 'message': 'No products found for this vendor.'}), 404
 
 
-
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(host="0.0.0.0", port=5000, debug=False) # Changed to debug=False
+    app.run(host="0.0.0.0", port=5000, debug=False)
