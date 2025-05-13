@@ -11,7 +11,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgres
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# Enable CORS for all routes and all origins
 CORS(app, supports_credentials=True)
 
 
