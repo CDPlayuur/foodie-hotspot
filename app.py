@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from datetime import datetime
-from flask_cors import CORS
+from flask_cors import CORS  # Import CORS
 
 
 app = Flask(__name__)
@@ -11,6 +11,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgres
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+# Enable CORS for all routes and all origins
 CORS(app, supports_credentials=True)
 
 
@@ -100,7 +101,6 @@ product_categories = db.Table(
 #  Flask route to handle user login
 @app.route('/api/login', methods=['POST'])
 def login():
-    print("Inside /api/login route") #Added for debugging
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
@@ -184,5 +184,4 @@ def get_vendor_products(vendor_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    #  app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False) # Changed to debug=False
