@@ -240,7 +240,7 @@ def get_vendors():
             'pickup': pickup,
             'delivery': delivery,
         })
-    return jsonify({'success': True, 'vendors': vendor_list}), 200
+    return jsonify({'vendors': vendor_list}), 200
 
 
 
