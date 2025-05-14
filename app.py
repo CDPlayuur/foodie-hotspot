@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from datetime import datetime
 from flask_cors import CORS
+import uuid
 
 
 app = Flask(__name__)
