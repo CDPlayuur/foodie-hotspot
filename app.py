@@ -77,23 +77,38 @@ class Product(db.Model):
 
 class Order(db.Model):
     __tablename__ = 'orders'
-    order_id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.String(36), primary_key=True, default=str(uuid.uuid4)) # Use UUID for order ID
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
-    order_status = db.Column(db.String(20), nullable=False)
+    order_status = db.Column(db.String(20), nullable=False, default='Placed')
     order_date = db.Column(db.TIMESTAMP, default=datetime.utcnow)
     total_amount = db.Column(db.Numeric(10, 2), nullable=False)
-    user = db.relationship('User')
+    delivery_address = db.Column(db.String(255))
+    payment_method = db.Column(db.String(50))
+    user = db.relationship('User', back_populates='orders')
     items = db.relationship('OrderItem', back_populates='order')
+
+    def __init__(self, user_id, total_amount, delivery_address, payment_method):
+        self.user_id = user_id
+        self.total_amount = total_amount
+        self.delivery_address = delivery_address
+        self.payment_method = payment_method
 
 
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
-    order_id = db.Column(db.Integer, db.ForeignKey('orders.order_id'), primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.product_id'), primary_key=True)
+    order_item_id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.String(36), db.ForeignKey('orders.order_id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.product_id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
-    price = db.Column(db.Numeric(10, 2), nullable=False)
+    price = db.Column(db.Numeric(10, 2), nullable=False) # Price at the time of order
     order = db.relationship('Order', back_populates='items')
     product = db.relationship('Product')
+
+    def __init__(self, order_id, product_id, quantity, price):
+        self.order_id = order_id
+        self.product_id = product_id
+        self.quantity = quantity
+        self.price = price
 
 
 class ProductKeyword(db.Model):
@@ -272,6 +287,78 @@ def get_vendor_data_with_products(vendor_id):
 
     return jsonify(vendor_data), 200
 
+@app.route('/api/place-order', methods=['POST'])
+def place_order():
+    """
+    Handles the placement of a new order.
+    """
+    data = request.get_json()
+
+    # Validate the incoming data
+    if not data or 'user_id' not in data or 'items' not in data or 'total_amount' not in data or 'delivery_address' not in data or 'payment_method' not in data:
+        return jsonify({'success': False, 'message': 'Invalid order data.  Missing required fields.'}), 400
+
+    user_id = data['user_id']
+    items = data['items']
+    total_amount = data['total_amount']
+    delivery_address = data['delivery_address']
+    payment_method = data['payment_method']
+
+    # Check if the user exists
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found.'}), 404
+
+    try:
+        # 1. Create the Order
+        new_order = Order(
+            user_id=user_id,
+            total_amount=total_amount,
+            delivery_address=delivery_address,
+            payment_method=payment_method
+        )
+        db.session.add(new_order)
+        db.session.flush()  # Need to flush to get the order_id
+
+        order_id = new_order.order_id
+
+        # 2. Create the OrderItems
+        for item in items:
+            product_id = item['product_id']
+            quantity = item['quantity']
+            price = item['price']  # Important: Use the price from the cart item, not the current product price
+
+            # Check if the product exists
+            product = Product.query.get(product_id)
+            if not product:
+                db.session.rollback()
+                return jsonify({'success': False, 'message': f'Product with ID {product_id} not found.'}), 400
+
+             # Check if there is enough stock.
+            if product.stock < quantity:
+                db.session.rollback()
+                return jsonify({'success': False, 'message': f'Insufficient stock for product {product.name}.'}), 400
+            
+            new_order_item = OrderItem(
+                order_id=order_id,
+                product_id=product_id,
+                quantity=quantity,
+                price=price
+            )
+            db.session.add(new_order_item)
+
+            # 3. Reduce product stock.  Do this *after* creating the OrderItem
+            product.stock -= quantity
+            db.session.add(product)
+
+        # Commit the transaction
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Order placed successfully!', 'order_id': order_id}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Failed to place order.', 'error': str(e)}), 500
 
 #debuggin
 @app.route('/api/products/all', methods=['GET'])
