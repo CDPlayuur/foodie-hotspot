@@ -4,7 +4,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from datetime import datetime
 from flask_cors import CORS
-import uuid
 
 
 app = Flask(__name__)
@@ -78,38 +77,23 @@ class Product(db.Model):
 
 class Order(db.Model):
     __tablename__ = 'orders'
-    order_id = db.Column(db.String(36), primary_key=True, default=str(uuid.uuid4)) # Use UUID for order ID
+    order_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
-    order_status = db.Column(db.String(20), nullable=False, default='Placed')
+    order_status = db.Column(db.String(20), nullable=False)
     order_date = db.Column(db.TIMESTAMP, default=datetime.utcnow)
     total_amount = db.Column(db.Numeric(10, 2), nullable=False)
-    delivery_address = db.Column(db.String(255))
-    payment_method = db.Column(db.String(50))
-    user = db.relationship('User', back_populates='orders')
+    user = db.relationship('User')
     items = db.relationship('OrderItem', back_populates='order')
-
-    def __init__(self, user_id, total_amount, delivery_address, payment_method):
-        self.user_id = user_id
-        self.total_amount = total_amount
-        self.delivery_address = delivery_address
-        self.payment_method = payment_method
 
 
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
-    order_item_id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.String(36), db.ForeignKey('orders.order_id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.product_id'), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.order_id'), primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.product_id'), primary_key=True)
     quantity = db.Column(db.Integer, nullable=False)
-    price = db.Column(db.Numeric(10, 2), nullable=False) # Price at the time of order
+    price = db.Column(db.Numeric(10, 2), nullable=False)
     order = db.relationship('Order', back_populates='items')
     product = db.relationship('Product')
-
-    def __init__(self, order_id, product_id, quantity, price):
-        self.order_id = order_id
-        self.product_id = product_id
-        self.quantity = quantity
-        self.price = price
 
 
 class ProductKeyword(db.Model):
