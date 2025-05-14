@@ -213,11 +213,14 @@ def fetch_products_by_vendor(vendor_id):
 
 @app.route('/api/products/vendor/<int:vendor_id>', methods=['GET'])
 def get_vendor_products(vendor_id):
-    products = fetch_products_by_vendor(vendor_id)  # Fetch products from the database
+    print(f"Fetching products for vendor_id: {vendor_id}")
+    products = fetch_products_by_vendor(vendor_id)
+    print("Fetched products:", products)
     if products:
         return jsonify({'success': True, 'products': products}), 200
     else:
         return jsonify({'success': False, 'message': 'No products found for this vendor.'}), 404
+
 
 @app.route('/api/vendors', methods=['GET'])
 def get_vendors():
@@ -240,8 +243,19 @@ def get_vendors():
             'delivery': delivery,
         })
 
-    # Return the list directly instead of wrapping it in a dictionary
     return jsonify(vendor_list), 200
+
+
+#debuggin
+@app.route('/api/products/all', methods=['GET'])
+def get_all_products():
+    products = Product.query.all()
+    product_list = [{
+        "product_id": p.product_id,
+        "vendor_id": p.vendor_id,
+        "name": p.name
+    } for p in products]
+    return jsonify(product_list), 200
 
 
 if __name__ == '__main__':
