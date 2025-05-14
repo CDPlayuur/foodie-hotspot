@@ -245,6 +245,33 @@ def get_vendors():
 
     return jsonify(vendor_list), 200
 
+# New route to get vendor data along with products
+@app.route('/api/vendor/<int:vendor_id>', methods=['GET'])
+def get_vendor_data_with_products(vendor_id):
+    """
+    Retrieves a single vendor's data along with their products.
+    """
+    vendor = Vendor.query.get(vendor_id)  # Fetch the vendor by ID
+    if not vendor:
+        return jsonify({'success': False, 'message': 'Vendor not found.'}), 404
+
+    # Fetch products for the vendor
+    products = fetch_products_by_vendor(vendor_id)
+
+    # Prepare the vendor data
+    vendor_data = {
+        'vendor_id': vendor.vendor_id,
+        'shop_name': vendor.shop_name,
+        'shop_description': vendor.shop_description,
+        'app_status': vendor.app_status,
+        'shop_logo': vendor.shop_logo,
+        'pickup': vendor.approved_at is not None,
+        'delivery': True, # Assuming delivery is true.  You may have this in your model.
+        'products': products  # Include the products in the response
+    }
+
+    return jsonify(vendor_data), 200
+
 
 #debuggin
 @app.route('/api/products/all', methods=['GET'])
