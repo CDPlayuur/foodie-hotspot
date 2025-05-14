@@ -217,7 +217,7 @@ def get_vendor_products(vendor_id):
     products = fetch_products_by_vendor(vendor_id)
     print("Fetched products:", products)
     if products:
-        return jsonify({'success': True, 'products': products}), 200
+        return jsonify({'products': products}), 200
     else:
         return jsonify({'success': False, 'message': 'No products found for this vendor.'}), 404
 
