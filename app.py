@@ -147,7 +147,8 @@ def login():
                 'success': True,
                 'message': 'Login successful!',
                 'username': user.username,
-                'role': user.role
+                'role': user.role,
+                'user_id': user.user_id
             }), 200
         else:
             return jsonify({'success': False, 'message': 'Invalid credentials.'}), 401
