@@ -353,32 +353,37 @@ def place_order():
 
 @app.route('/api/orders/<int:user_id>', methods=['GET'])
 def get_orders(user_id):
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({'success': False, 'message': 'User not found.'}), 404
-
     orders = Order.query.filter_by(user_id=user_id).order_by(Order.order_date.desc()).all()
 
-    orders_data = []
-    for order in orders:
-        items = [{
-            'product_id': item.product_id,
-            'product_name': item.product.name,
-            'quantity': item.quantity,
-            'price': float(item.price)
-        } for item in order.items]
+    if not orders:
+        return jsonify({'success': True, 'orders': []})
 
-        orders_data.append({
+    order_list = []
+    for order in orders:
+        order_items = []
+        for item in order.items:
+            product = Product.query.get(item.product_id)
+            vendor = Vendor.query.get(product.vendor_id)
+
+            order_items.append({
+                'product_name': product.name,
+                'quantity': item.quantity,
+                'price': str(item.price),
+                'vendor_name': vendor.shop_name
+            })
+
+        order_list.append({
             'order_id': order.order_id,
-            'order_status': order.order_status,
-            'order_date': order.order_date.strftime('%Y-%m-%d %H:%M'),
+            'order_date': order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
             'delivery_address': order.delivery_address,
             'payment_method': order.payment_method,
-            'total_amount': float(order.total_amount),
-            'items': items
+            'order_status': order.order_status,
+            'total_amount': str(order.total_amount),
+            'items': order_items
         })
 
-    return jsonify({'success': True, 'orders': orders_data}), 200
+    return jsonify({'success': True, 'orders': order_list})
+
 
 
 #debuggin
