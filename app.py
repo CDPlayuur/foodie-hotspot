@@ -275,14 +275,13 @@ def get_vendor_data_with_products(vendor_id):
 
 @app.route('/api/place-order', methods=['POST'])
 def place_order():
-    """
-    Handles the placement of a new order.
-    """
     data = request.get_json()
 
-    # Validate the incoming data
+    app.logger.info(f"Received place order request with data: {data}")
+
     if not data or 'user_id' not in data or 'items' not in data or 'total_amount' not in data or 'delivery_address' not in data or 'payment_method' not in data:
-        return jsonify({'success': False, 'message': 'Invalid order data.  Missing required fields.'}), 400
+        app.logger.warning("Missing fields in order data: %s", data)
+        return jsonify({'success': False, 'message': 'Invalid order data. Missing required fields.'}), 400
 
     user_id = data['user_id']
     items = data['items']
@@ -290,13 +289,12 @@ def place_order():
     delivery_address = data['delivery_address']
     payment_method = data['payment_method']
 
-    # Check if the user exists
     user = User.query.get(user_id)
     if not user:
+        app.logger.error(f"User not found for user_id: {user_id}")
         return jsonify({'success': False, 'message': 'User not found.'}), 404
 
     try:
-        # 1. Create the Order
         new_order = Order(
             user_id=user_id,
             total_amount=total_amount,
@@ -304,27 +302,27 @@ def place_order():
             payment_method=payment_method
         )
         db.session.add(new_order)
-        db.session.flush()  # Need to flush to get the order_id
+        db.session.flush()
 
         order_id = new_order.order_id
+        app.logger.info(f"Created new order with ID: {order_id}")
 
-        # 2. Create the OrderItems
         for item in items:
             product_id = item['product_id']
             quantity = item['quantity']
-            price = item['price']  # Important: Use the price from the cart item, not the current product price
+            price = item['price']
 
-            # Check if the product exists
             product = Product.query.get(product_id)
             if not product:
                 db.session.rollback()
+                app.logger.error(f"Product not found: {product_id}")
                 return jsonify({'success': False, 'message': f'Product with ID {product_id} not found.'}), 400
 
-             # Check if there is enough stock.
             if product.stock < quantity:
                 db.session.rollback()
+                app.logger.error(f"Insufficient stock for product {product.name}")
                 return jsonify({'success': False, 'message': f'Insufficient stock for product {product.name}.'}), 400
-            
+
             new_order_item = OrderItem(
                 order_id=order_id,
                 product_id=product_id,
@@ -333,17 +331,17 @@ def place_order():
             )
             db.session.add(new_order_item)
 
-            # 3. Reduce product stock.  Do this *after* creating the OrderItem
             product.stock -= quantity
             db.session.add(product)
 
-        # Commit the transaction
         db.session.commit()
+        app.logger.info(f"Order {order_id} placed successfully with {len(items)} items.")
 
         return jsonify({'success': True, 'message': 'Order placed successfully!', 'order_id': order_id}), 201
 
     except Exception as e:
         db.session.rollback()
+        app.logger.error(f"Error placing order: {e}")
         return jsonify({'success': False, 'message': 'Failed to place order.', 'error': str(e)}), 500
 
 #debuggin
