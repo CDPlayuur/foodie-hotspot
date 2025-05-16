@@ -79,6 +79,8 @@ class Order(db.Model):
     __tablename__ = 'orders'
     order_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    delivery_address = db.Column(db.String(255))
+    payment_method = db.Column(db.String(50), nullable=False)
     order_status = db.Column(db.String(20), nullable=False)
     order_date = db.Column(db.TIMESTAMP, default=datetime.utcnow)
     total_amount = db.Column(db.Numeric(10, 2), nullable=False)
@@ -279,9 +281,12 @@ def place_order():
 
     app.logger.info(f"Received place order request with data: {data}")
 
-    if not data or 'user_id' not in data or 'items' not in data or 'total_amount' not in data or 'delivery_address' not in data or 'payment_method' not in data:
-        app.logger.warning("Missing fields in order data: %s", data)
-        return jsonify({'success': False, 'message': 'Invalid order data. Missing required fields.'}), 400
+    required_fields = ['user_id', 'items', 'total_amount', 'delivery_address', 'payment_method']
+    missing_fields = [field for field in required_fields if field not in data]
+
+    if missing_fields:
+        app.logger.warning(f"Missing fields in order data: {missing_fields}")
+        return jsonify({'success': False, 'message': f'Missing fields: {", ".join(missing_fields)}'}), 400
 
     user_id = data['user_id']
     items = data['items']
@@ -299,10 +304,11 @@ def place_order():
             user_id=user_id,
             total_amount=total_amount,
             delivery_address=delivery_address,
-            payment_method=payment_method
+            payment_method=payment_method,
+            order_status='Pending'  # ← you must set this since it's NOT nullable
         )
         db.session.add(new_order)
-        db.session.flush()
+        db.session.flush()  # so we get the order_id before committing
 
         order_id = new_order.order_id
         app.logger.info(f"Created new order with ID: {order_id}")
@@ -343,6 +349,7 @@ def place_order():
         db.session.rollback()
         app.logger.error(f"Error placing order: {e}")
         return jsonify({'success': False, 'message': 'Failed to place order.', 'error': str(e)}), 500
+
 
 #debuggin
 @app.route('/api/products/all', methods=['GET'])
